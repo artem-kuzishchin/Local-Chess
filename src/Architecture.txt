@@ -1,0 +1,15 @@
+1) The PAGE consists of a GAME, a UI, and a RENDERER, all sending messages between each other.
+2) From outside, the GAME can be queried for
+    - possible moves at a given location
+    - whether the game is ongoing
+    and can be 
+    - asked to update the gamestate.
+3) The UI is in charge of 
+    - constructing relevant HTML elements
+    - adding relevant event listeners, which send requests for action to the PAGE.
+4) The RENDERER recieves
+    - gamestate data, so that it can draw the board, and
+    - some UI data (Ex: the player currently has a piece selected, so we should highlight possible moves.)
+    and can
+    - be requested to change the current style / rendering component.
+
