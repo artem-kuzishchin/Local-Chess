@@ -4,138 +4,184 @@ export type COLOR = "W" | "B";
 export type Piece = {
     ruleSet :RULESET;
     color: COLOR;
+    x:number;
+    y:number;
 }  
 
 export type Square = Piece | "EMPTY";
 
-type xyLocation = {x:number , y:number};
+export type numPair = {x:number , y:number};
 
-export class GAME {
+class Player {
+    king: Piece;
+    subjects: Piece[];
+    hasKingsideCastleRights:boolean = true;
+    hasQueensideCastleRights:boolean = true;
+    
+    constructor(king:Piece, subjects:Piece[]){
+        this.king = king;
+        this.subjects = subjects;
+    }
+
+    removePiece(piece:Piece){
+        this.subjects = this.subjects.filter(subj => !(subj === piece));
+    }
+
+    addPiece(piece:Piece){
+        if(this.subjects.indexOf(piece)== -1){
+            this.subjects.push(piece);
+        }
+    }
+
+    color():COLOR{
+        return this.king.color;
+    }
+}
+
+export class ChessBoard {
    
     // NECESSARY DATA STRUCTURES:
 
     private board:Square[][];
+    private players : Player[] =[];
 
-    private turn: COLOR = "W";
 
+
+//|----------------|
+//|-INITIALIZATION-|
+//|----------------|
 
     constructor(){
         this.board= Array.from(Array(8),()=>Array(8).fill("EMPTY"));
-        this.initStartPosition();
-        this.turn = "W";
+        this.players.push(this.initPlayer("W"));
+        this.players.push(this.initPlayer("B")); 
     }
 
-    private initStartPosition(){
-        this.initPawns();
-        this.initMinorPieces();
-        this.initRoyalty();
+
+
+    private initPlayer(color:COLOR): Player{
+        let kingY = ( color==="W" ? 0 : 7);
+        let king =  this.createPieceAt(4,kingY,"KING",color);
+        let soldiers = this.makeSoldiers(color);
+        return new Player(king,soldiers);
     }
 
-    private initPawns(){
+
+    private makeSoldiers(color:COLOR):Piece[]{
+        
+        let [pieceRow, pawnRow] = [0,1];
+        if(color == "B"){
+            [pieceRow,pawnRow] = [7,6];
+        } 
+        let soldiers :Piece[] = [this.createPieceAt(3,pieceRow,"QUEEN",color)];         
         for(let i = 0; i <8 ; i++){
-            this.setPieceAt(i,1,"PAWN","W");
-            this.setPieceAt(i,6,"PAWN","B");
+            soldiers.push(this.createPieceAt(i,pawnRow,"PAWN",color));
         }
-    }
 
-    private initMinorPieces(){
         let minorPieces :RULESET[]= ["ROOK","KNIGHT","BISHOP"];
         minorPieces.forEach((ruleset,index)=>{
-            this.setPieceAt(index,0,ruleset,"W");
-            this.setPieceAt(index,7,ruleset,"B");
-            this.setPieceAt(7-index,0,ruleset,"W");
-            this.setPieceAt(7-index,7,ruleset,"B");
+            soldiers.push(this.createPieceAt(index,pieceRow,ruleset,color));
+            soldiers.push(this.createPieceAt(7-index,pieceRow,ruleset,color));
         },this);
+
+        return soldiers;
     }
 
-    private initRoyalty(){
-        this.setPieceAt(3,0,"QUEEN","W");
-        this.setPieceAt(3,7,"QUEEN","B");
-        this.setPieceAt(4,0,"KING","W");
-        this.setPieceAt(4,7,"KING","B");
-    }
+// |---------------------|
+// |-GETTERS AND SETTERS-|
+// |---------------------|
 
-    private setPieceAt(x:number,y:number, newRuleSet:RULESET, newColor: COLOR){
-        let piece : Piece = {ruleSet: newRuleSet, color: newColor}; 
-        this.board[x][y] = piece;
-    }
-
-    private clearSquareAt(x:number,y:number){
-        this.board[x][y] = "EMPTY";
-    }
-
-
-    getBoard() : Square[][] {
-        return this.board;
-    }
-    
-    
-    legalMovesByWhatIs(atSquare:xyLocation):boolean[][]{
-        let piece :Square = this.board[atSquare.x][atSquare.y];
-        if( piece === "EMPTY" ){
-            return this.getCleanThreatBoard();
+    getTestBoard() : Square[][] {
+        let deepCopy : Square[][] = Array.from(Array(8), () => Array(8).fill("EMPTY") );
+        let square:Square = "EMPTY";
+        for (let x = 0; x<8; x++){
+            for(let y= 0; y<8 ; y++){
+                square = this.board[x][y]; 
+                if(square!= "EMPTY"){
+                    deepCopy[x][y] = {...square};
+                }
+            }
         }
-        return this.getLegalMovesOf(piece,atSquare);
+        return deepCopy;
     }
 
-    getLegalMovesOf(piece:Piece,atSquare:xyLocation):boolean[][]{
-        return this.getCleanThreatBoard();
-        // let candidateMoves:boolean[][] = this.getMovespaceOf(piece,atSquare);
-        // for each true (x,y) in candidateMoves
-        //      if moveInducesCheck(atSquare,(x,y))
-        //      if(piece is king) - check that you arent castling through threatened squares
-        //return candidatemoves
-    }
 
-    private candidateMoveIsLegal(piece:Piece, origin:xyLocation, target:xyLocation){
-        // create copy of board with candidate move on it,
-        // then examine whether the king is in check after.
-        // 
-    }
-
-    private getMovespaceOf(piece:Piece,atSquare:xyLocation):boolean[][]{
-        switch(piece.ruleSet){
-            case("QUEEN"): return this.queenMovespace( atSquare);
-            case("KING"): return this.kingMovespace(piece.color, atSquare);
-            case("KNIGHT"): return this.knightMovespace( atSquare);
-            case("BISHOP"): return this.bishopMovespace( atSquare);
-            case("ROOK"): return this.rookMovespace( atSquare);
-            case("PAWN"): return this.pawnMovespace( atSquare);
-
+    getPlayer(color:COLOR):Player{
+        switch(color){
+            case("W"): return this.players[0];
+            case("B"): return this.players[1];
         }
     }
 
-    private queenMovespace(atSquare:xyLocation):boolean[][]{
-        return this.getCleanThreatBoard();
+    getAllPiecesOf(color:COLOR):Piece[]{
+        let player = this.getPlayer(color);
+        return [...player.subjects, player.king];
     }
 
-    private bishopMovespace(atSquare:xyLocation):boolean[][]{
-        return this.getCleanThreatBoard();
-    }
-    private rookMovespace(atSquare:xyLocation):boolean[][]{
-        return this.getCleanThreatBoard();
+    getAllPiecesButKingOf(color:COLOR):Piece[]{
+        return [...this.getPlayer(color).subjects];
     }
 
-    private pawnMovespace(atSquare:xyLocation):boolean[][]{
-        // if(this.enPassantPossibleForThePawn(atSquare))
-        return this.getCleanThreatBoard();
-    }
-    private knightMovespace(atSquare:xyLocation):boolean[][]{
-        return this.getCleanThreatBoard();
-    }
-    private kingMovespace(color:COLOR ,atSquare:xyLocation):boolean[][]{
-        // castlerights check
-        return this.getCleanThreatBoard();
+    getKingOf(color:COLOR):Piece{
+        return {...this.getPlayer(color).king};
     }
 
-
-    private isThereAThreatAt(xy:xyLocation, forPlayer : COLOR):boolean{
-        return false;
-    }
-
-
-    private getCleanThreatBoard(){
+    getEmptyMoveBoard():boolean[][]{
         return Array.from(Array(8),()=>Array(8).fill(false));
     }
+
+
+    getSquareAt(coord:numPair):Square{
+        return this.board[coord.x][coord.y];
+    }
+
+    getAllGamePieces(){
+        let p1_pieces = this.getAllPiecesOf("W");
+        let p2_pieces = this.getAllPiecesOf("B");
+        return p1_pieces.concat(p2_pieces);
+    }
+
+    commitMove(piece:Piece,dest:numPair){
+        this.board[piece.x][piece.y] = "EMPTY";
+        let destSquare = this.board[dest.x][dest.y];
+        if( destSquare != "EMPTY"){
+            this.clearPiece(destSquare);
+        } 
+        this.setPieceAt(piece,dest);
+    }
+
+    private createPieceAt(x:number,y:number, newRuleSet:RULESET, newColor: COLOR):Piece{
+        let piece : Piece = {ruleSet: newRuleSet, color: newColor,x:x,y:y}; 
+        this.board[x][y] = piece;
+        return piece;
+    }
+
+    private setPieceAt(piece: Piece , coord: numPair){
+        this.board[coord.x][coord.y] = piece;
+        piece = Object.assign(piece,coord);
+    }
+
+    private clearPiece(piece:Piece){
+        let player = this.getPlayer(piece.color);
+        player.removePiece(piece);
+        this.board[piece.x][piece.y] = "EMPTY";
+    }
+
+
+    squareIsEmpty(square:numPair):boolean{
+        return this.board[square.x][square.y] === "EMPTY";
+    }  
+
+    squareHasEnemy(color:COLOR, square:numPair){
+        let squareContents = this.board[square.x][square.y];
+        if(squareContents === "EMPTY" ){
+            return false;
+        } else {
+            return (color != squareContents.color);
+        }
+    }
+
+
+
 
 }
