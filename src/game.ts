@@ -1,9 +1,9 @@
 export type RULESET= "QUEEN" | "KING" | "KNIGHT" | "PAWN" | "BISHOP" | "ROOK";
-export type COLOR = "W" | "B";
+export type Color = "W" | "B";
 
 export type Piece = {
     ruleSet :RULESET;
-    color: COLOR;
+    color: Color;
     x:number;
     y:number;
 }  
@@ -33,7 +33,7 @@ class Player {
         }
     }
 
-    color():COLOR{
+    color():Color{
         return this.king.color;
     }
 }
@@ -59,7 +59,7 @@ export class ChessBoard {
 
 
 
-    private initPlayer(color:COLOR): Player{
+    private initPlayer(color:Color): Player{
         let kingY = ( color==="W" ? 0 : 7);
         let king =  this.createPieceAt(4,kingY,"KING",color);
         let soldiers = this.makeSoldiers(color);
@@ -67,7 +67,7 @@ export class ChessBoard {
     }
 
 
-    private makeSoldiers(color:COLOR):Piece[]{
+    private makeSoldiers(color:Color):Piece[]{
         
         let [pieceRow, pawnRow] = [0,1];
         if(color == "B"){
@@ -106,29 +106,27 @@ export class ChessBoard {
     }
 
 
-    getPlayer(color:COLOR):Player{
+    getPlayer(color:Color):Player{
         switch(color){
             case("W"): return this.players[0];
             case("B"): return this.players[1];
         }
     }
 
-    getAllPiecesOf(color:COLOR):Piece[]{
+    getAllPiecesOf(color:Color):Piece[]{
         let player = this.getPlayer(color);
         return [...player.subjects, player.king];
     }
 
-    getAllPiecesButKingOf(color:COLOR):Piece[]{
+    getAllPiecesButKingOf(color:Color):Piece[]{
         return [...this.getPlayer(color).subjects];
     }
 
-    getKingOf(color:COLOR):Piece{
+    getKingOf(color:Color):Piece{
         return {...this.getPlayer(color).king};
     }
 
-    getEmptyMoveBoard():boolean[][]{
-        return Array.from(Array(8),()=>Array(8).fill(false));
-    }
+
 
 
     getSquareAt(coord:numPair):Square{
@@ -150,7 +148,7 @@ export class ChessBoard {
         this.setPieceAt(piece,dest);
     }
 
-    private createPieceAt(x:number,y:number, newRuleSet:RULESET, newColor: COLOR):Piece{
+    private createPieceAt(x:number,y:number, newRuleSet:RULESET, newColor: Color):Piece{
         let piece : Piece = {ruleSet: newRuleSet, color: newColor,x:x,y:y}; 
         this.board[x][y] = piece;
         return piece;
@@ -159,6 +157,7 @@ export class ChessBoard {
     private setPieceAt(piece: Piece , coord: numPair){
         this.board[coord.x][coord.y] = piece;
         piece = Object.assign(piece,coord);
+        
     }
 
     private clearPiece(piece:Piece){
@@ -172,13 +171,34 @@ export class ChessBoard {
         return this.board[square.x][square.y] === "EMPTY";
     }  
 
-    squareHasEnemy(color:COLOR, square:numPair){
+    squareHasEnemy(color:Color, square:numPair){
         let squareContents = this.board[square.x][square.y];
         if(squareContents === "EMPTY" ){
             return false;
         } else {
             return (color != squareContents.color);
         }
+    }
+
+    playerCanCastle(color:Color):boolean{
+        let player = this.getPlayer(color);
+        return player.hasKingsideCastleRights||player.hasQueensideCastleRights;
+    }
+    
+    revokeAllCastleRights(color:Color){
+        let player = this.getPlayer(color);
+        player.hasKingsideCastleRights = false;
+        player.hasQueensideCastleRights = false;
+    }
+
+    revokeKingsideCastleRights(color:Color){
+        let player = this.getPlayer(color);
+        player.hasKingsideCastleRights = false;
+    }
+
+    revokeQueensideCastleRights(color:Color){
+        let player = this.getPlayer(color);
+        player.hasQueensideCastleRights = false;
     }
 
 
